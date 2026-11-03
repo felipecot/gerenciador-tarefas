@@ -1,8 +1,12 @@
 # Gerenciador de Tarefas
 
+**Aluno:** Felipe Gustavo — RA 72301406  
+**Professor:** Alexandre Sauer  
+**Repositório:** https://github.com/felipecot/gerenciador-tarefas
+
 Sistema web simples para cadastrar, consultar, editar, concluir e excluir tarefas (CRUD), desenvolvido com apoio de IA.
 
-**🔗 Sistema publicado:** _COLE AQUI A URL DO DEPLOY_
+**🔗 Sistema publicado:** https://gerenciador-tarefas-shhx.onrender.com/
 
 **Ferramenta de IA utilizada:** Claude (Anthropic)
 
@@ -42,5 +46,22 @@ Relatório completo em [AUDITORIA.md](AUDITORIA.md).
 | 3 — Testes | De 6 para 11 testes, incluindo corpo grande, id inexistente e criação simultânea | Nenhum teste removido ou enfraquecido |
 | 2 — Refatoração | Validação movida para `src/validacao.js` sem mudar comportamento | Testes passaram antes e depois |
 
+## Evidências
+
+| Captura | Descrição |
+|---------|-----------|
+| ![npm test](docs/evidencias/01-npm-test-6-testes-versao-inicial.png) | `npm test` na versão inicial (6 testes passando) |
+| ![Tarefa criada](docs/evidencias/02-tarefa-criada.png) | Tarefa cadastrada e listada |
+| ![Edição](docs/evidencias/03-edicao-de-tarefa.png) | Edição de tarefa (botão "Salvar alterações") |
+| ![Concluída](docs/evidencias/04-tarefa-concluida.png) | Tarefa concluída (filtro "Concluídas") |
+| ![Confirmar exclusão](docs/evidencias/05-confirmar-exclusao.png) | Confirmação antes de excluir |
+| ![Excluída](docs/evidencias/06-tarefa-excluida.png) | Mensagem "Tarefa excluída." |
+| ![Prazo](docs/evidencias/07-seletor-de-prazo.png) | Campo de prazo com calendário |
+| ![Deploy](docs/evidencias/08-deploy-render-sucesso.png) | Deploy no Render concluído (Live) |
+
 ## O que a IA fez, o que precisou corrigir e o que aprendi
-_Escreva aqui, com suas palavras (3 a 5 linhas). Exemplo de pontos: a primeira versão usava uma biblioteca que não instalou no meu Windows e foi trocada pelo SQLite do Node; a auditoria achou erro 500 para corpo grande; aprendi por que a validação precisa ficar no servidor._
+**O que a IA produziu corretamente:** a estrutura do sistema (API com Express, banco SQLite, tela em HTML/CSS/JS), a validação no servidor, os testes automatizados e o relatório de auditoria.
+
+**O que precisou ser corrigido:** a primeira versão usava a biblioteca `better-sqlite3`, que não instalou no meu Windows (Node 24, sem ferramentas de C++). Foi trocada pelo SQLite que já vem no Node (`node:sqlite`), e os testes voltaram a passar. A auditoria também achou que um corpo de requisição grande devolvia erro 500 em vez de 413 e que o duplo clique criava tarefas repetidas; os dois foram corrigidos.
+
+**O que aprendi:** que a validação precisa ficar no servidor, porque o navegador pode ser alterado; que testes de integração devem usar um banco separado (em memória); que um teste que falha por bug real não deve ser apagado; e que uma refatoração segura muda a organização do código sem mudar o comportamento, com os testes rodando antes e depois. Também vi que o plano gratuito do Render pode apagar os dados do SQLite, e por isso isso está documentado.

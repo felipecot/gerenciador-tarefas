@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minhas tarefas</title>
+<style>
+:root{--bg:#eef1f4;--sf:#fff;--ink:#1b2733;--mut:#5b6773;--ac:#2f5d8c;--alta:#b3412e;--media:#a6741a;--baixa:#3e7b5a;--ln:#d3dae0;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#131a21;--sf:#1c252e;--ink:#e6ebef;--mut:#9aa7b3;--ac:#4f86bd;--ln:#2d3944;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:720px;margin:0 auto;padding:24px 16px 64px}
+h1{font:700 2rem/1.1 Georgia,"Times New Roman",serif;margin:8px 0 20px}
+form,.t{background:var(--sf);border:1px solid var(--ln);border-radius:8px;padding:16px}
+form{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+.full{grid-column:1/-1}
+label{display:grid;gap:4px;font-size:.9rem;color:var(--mut)}
+input,select,textarea,button{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--ln);border-radius:6px;padding:8px}
+button{cursor:pointer;background:var(--ac);color:#fff;border-color:var(--ac)}
+button.sec{background:transparent;color:var(--ink);border-color:var(--ln)}
+:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+#msg{margin:12px 0;padding:10px 12px;border-radius:6px;display:none}
+#msg.ok{display:block;background:#dcefe3;color:#1d4a33}
+#msg.erro{display:block;background:#f6dcd7;color:#7a2417}
+.filtros{display:flex;gap:8px;margin:20px 0 12px;flex-wrap:wrap}
+.filtros button{background:transparent;color:var(--ink);border-color:var(--ln)}
+.filtros button[aria-pressed=true]{background:var(--ac);color:#fff;border-color:var(--ac)}
+.t{margin-bottom:10px;border-left:6px solid var(--p)}
+.t.alta{--p:var(--alta)}.t.media{--p:var(--media)}.t.baixa{--p:var(--baixa)}
+.t.concluida h2{text-decoration:line-through;color:var(--mut)}
+.t h2{font-size:1.1rem;margin:0 0 4px}
+.t p{margin:4px 0;color:var(--mut)}
+.meta{font-size:.85rem;color:var(--mut)}
+.acoes{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.vazio{text-align:center;color:var(--mut);padding:32px 0}
+@media (max-width:520px){form{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Minhas tarefas</h1>
+  <form id="f" novalidate>
+    <input type="hidden" id="id">
+    <label class="full">Título <input id="titulo" maxlength="100" required></label>
+    <label class="full">Descrição <textarea id="descricao" rows="2" maxlength="500"></textarea></label>
+    <label>Prioridade
+      <select id="prioridade"><option value="baixa">Baixa</option><option value="media" selected>Média</option><option value="alta">Alta</option></select>
+    </label>
+    <label>Prazo <input id="prazo" type="date"></label>
+    <div class="full" style="display:flex;gap:8px">
+      <button type="submit" id="salvar">Adicionar tarefa</button>
+      <button type="button" class="sec" id="cancelar" hidden>Cancelar edição</button>
+    </div>
+  </form>
+  <div id="msg" role="status" aria-live="polite"></div>
+  <div class="filtros" id="filtros">
+    <button type="button" data-s="" aria-pressed="true">Todas</button>
+    <button type="button" data-s="pendente" aria-pressed="false">Pendentes</button>
+    <button type="button" data-s="concluida" aria-pressed="false">Concluídas</button>
+  </div>
+  <div id="lista"></div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const rotulo = { baixa: 'Baixa', media: 'Média', alta: 'Alta' };
+let filtro = '';
+
+function aviso(texto, tipo) {
+  const m = $('msg'); m.textContent = texto; m.className = tipo;
+  clearTimeout(aviso.t); aviso.t = setTimeout(() => { m.className = ''; }, 4000);
+}
+async function api(url, metodo = 'GET', corpo) {
+  const r = await fetch(url, { method: metodo, headers: { 'Content-Type': 'application/json' }, body: corpo ? JSON.stringify(corpo) : undefined });
+  if (r.status === 204) return null;
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.erro || 'Não foi possível concluir a ação.');
+  return d;
+}
+function el(tag, texto, cls) { const e = document.createElement(tag); if (texto) e.textContent = texto; if (cls) e.className = cls; return e; }
+
+async function carregar() {
+  try {
+    const tarefas = await api('/api/tarefas' + (filtro ? '?status=' + filtro : ''));
+    const lista = $('lista'); lista.replaceChildren();
+    if (!tarefas.length) lista.append(el('div', 'Nenhuma tarefa aqui. Preencha o formulário para adicionar a primeira.', 'vazio'));
+    for (const t of tarefas) {
+      const card = el('article', '', 't ' + t.prioridade + (t.status === 'concluida' ? ' concluida' : ''));
+      card.append(el('h2', t.titulo));
+      if (t.descricao) card.append(el('p', t.descricao));
+      const prazo = t.prazo ? ' · Prazo: ' + t.prazo.split('-').reverse().join('/') : '';
+      card.append(el('div', 'Prioridade ' + rotulo[t.prioridade].toLowerCase() + prazo, 'meta'));
+      const ac = el('div', '', 'acoes');
+      const b1 = el('button', t.status === 'concluida' ? 'Reabrir' : 'Concluir', 'sec');
+      b1.onclick = () => agir(() => api('/api/tarefas/' + t.id, 'PUT', { status: t.status === 'concluida' ? 'pendente' : 'concluida' }), 'Status atualizado.');
+      const b2 = el('button', 'Editar', 'sec'); b2.onclick = () => editar(t);
+      const b3 = el('button', 'Excluir', 'sec');
+      b3.onclick = () => { if (confirm('Excluir a tarefa "' + t.titulo + '"?')) agir(() => api('/api/tarefas/' + t.id, 'DELETE'), 'Tarefa excluída.'); };
+      ac.append(b1, b2, b3); card.append(ac); lista.append(card);
+    }
+  } catch (e) { aviso(e.message, 'erro'); }
+}
+async function agir(fn, ok) { try { await fn(); aviso(ok, 'ok'); await carregar(); } catch (e) { aviso(e.message, 'erro'); } }
+
+function editar(t) {
+  $('id').value = t.id; $('titulo').value = t.titulo; $('descricao').value = t.descricao;
+  $('prioridade').value = t.prioridade; $('prazo').value = t.prazo || '';
+  $('salvar').textContent = 'Salvar alterações'; $('cancelar').hidden = false; $('titulo').focus();
+}
+function limpar() { $('f').reset(); $('id').value = ''; $('salvar').textContent = 'Adicionar tarefa'; $('cancelar').hidden = true; }
+$('cancelar').onclick = limpar;
+
+$('f').onsubmit = async ev => {
+  ev.preventDefault();
+  const corpo = { titulo: $('titulo').value, descricao: $('descricao').value, prioridade: $('prioridade').value, prazo: $('prazo').value || null };
+  const id = $('id').value;
+  $('salvar').disabled = true;
+  try {
+    await agir(() => id ? api('/api/tarefas/' + id, 'PUT', corpo) : api('/api/tarefas', 'POST', corpo), id ? 'Tarefa atualizada.' : 'Tarefa adicionada.');
+    if ($('msg').className === 'ok') limpar();
+  } finally { $('salvar').disabled = false; }
+};
+$('filtros').onclick = ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  filtro = b.dataset.s;
+  document.querySelectorAll('#filtros button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  carregar();
+};
+carregar();
+</script>
+</body>
+</html>
